@@ -54,7 +54,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 const queryClient = new QueryClient({
   mutationCache: new MutationCache({
-    onError: (error) => { reportApiError(error); },
+    onError: (error, _variables, _context, mutation) => {
+      if (!mutation.options.onError) reportApiError(error);
+    },
   }),
   defaultOptions: {
     queries: {

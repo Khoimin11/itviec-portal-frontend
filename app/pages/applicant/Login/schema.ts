@@ -5,6 +5,8 @@ export const schema = (t: TFunction<["auth"], undefined>) => {
   return z.object({
     email: z
       .string()
+      .trim()
+      .toLowerCase()
       .nonempty({ message: t("Can't be blank") })
       .email({ message: t("Please check your email") }),
     password: z.string().nonempty({ message: t("Can't be blank") }),

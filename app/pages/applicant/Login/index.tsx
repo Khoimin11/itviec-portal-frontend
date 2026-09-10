@@ -17,26 +17,29 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import InputBase from "~/components/InputBase";
-import authService, { type LoginResponse } from "~/services/authService";
+import authService from "~/services/authService";
+import { ApiError } from "~/api/client";
 import { useUserStore } from "~/stores/userStore";
 import showToast from "~/utils/showToast";
 import useValidation from "~/hooks/useValidation";
 import { GoogleLogin } from "@react-oauth/google";
 import { Check } from "feather-icons-react";
 import { schema } from "./schema";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const ROLLBACK_ROUTES = ["apply", "review", "company", "job"];
 
 const Login = () => {
   const { t } = useTranslation(["auth"]);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const {
     register,
     formState: { errors },
     handleSubmit,
     reset,
+    setError,
     watch,
   } = useForm<ILogin>({
     defaultValues: {
@@ -54,30 +57,38 @@ const Login = () => {
     mutationFn: (body: ILogin) => authService.login(body),
 
     onSuccess: (response) => {
-      const message = response.message as string;
-      const data = response.data as LoginResponse;
-      if (!data && message) {
-        showToast("error", t(message + ""));
-        return;
-      }
+      const data = response.data;
+      localStorage.setItem("access_token", data.accessToken);
+      queryClient.removeQueries();
       login(data.user);
-      localStorage.setItem("access_token", data.accessToken as string);
       const target = ROLLBACK_ROUTES.find((key) => searchParams.get(key));
       const redirectUrl = target
         ? `/${target}/${searchParams.get(target)}`
         : "/";
 
       showToast("success", t("Successfully authenticated from Email account."));
-      setTimeout(() => {
-        navigate(redirectUrl);
-        // window.location.href = redirectUrl;
-      }, 2000);
+      navigate(redirectUrl);
       reset();
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 422) {
+        const fields: (keyof ILogin)[] = ["email", "password"];
+        let focused = false;
+        for (const field of fields) {
+          const message = error.errors[field]?.[0];
+          if (message) {
+            setError(field, { type: "server", message }, { shouldFocus: !focused });
+            focused = true;
+          }
+        }
+        if (focused) return;
+      }
+      reportApiError(error);
     },
   });
 
   const onSubmit: SubmitHandler<ILogin> = async (data: ILogin) => {
-    loginMutation.mutate(data);
+    if (!loginMutation.isPending) loginMutation.mutate(data);
   };
 
   const isValidEmail = useValidation(watch("email"));
