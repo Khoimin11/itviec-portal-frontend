@@ -1,0 +1,80 @@
+# API Laravel cần triển khai
+
+Danh sách lấy từ các service frontend. Đây là hợp đồng dự kiến, chưa phải API đã tồn tại trong Laravel. Các biến `${id}`, `${slug}`, `${param}` là tham số route.
+
+| Method | URL mặc định | Service: payload và kiểu phản hồi |
+| --- | --- | --- |
+| GET | `/api/applicant/${userId}` | [applicantService.ts](../app/services/applicantService.ts) |
+| POST | `/api/applicant/upload/cv` | [applicantService.ts](../app/services/applicantService.ts) |
+| PATCH | `/api/applicant/personal` | [applicantService.ts](../app/services/applicantService.ts) |
+| PATCH | `/api/applicant/general` | [applicantService.ts](../app/services/applicantService.ts) |
+| PATCH | `/api/applicant/contact` | [applicantService.ts](../app/services/applicantService.ts) |
+| PATCH | `/api/applicant/cover-letter` | [applicantService.ts](../app/services/applicantService.ts) |
+| PATCH | `/api/applicant/about-me` | [applicantService.ts](../app/services/applicantService.ts) |
+| GET | `/api/applicant/educations` | [applicantService.ts](../app/services/applicantService.ts) |
+| POST | `/api/applicant/education` | [applicantService.ts](../app/services/applicantService.ts) |
+| PUT | `/api/applicant/education/${id}` | [applicantService.ts](../app/services/applicantService.ts) |
+| DELETE | `/api/applicant/education/${id}` | [applicantService.ts](../app/services/applicantService.ts) |
+| GET | `/api/applicant/experiences` | [applicantService.ts](../app/services/applicantService.ts) |
+| POST | `/api/applicant/experience` | [applicantService.ts](../app/services/applicantService.ts) |
+| PUT | `/api/applicant/experience/${id}` | [applicantService.ts](../app/services/applicantService.ts) |
+| DELETE | `/api/applicant/experience/${id}` | [applicantService.ts](../app/services/applicantService.ts) |
+| GET | `/api/applicant/projects` | [applicantService.ts](../app/services/applicantService.ts) |
+| POST | `/api/applicant/project` | [applicantService.ts](../app/services/applicantService.ts) |
+| PUT | `/api/applicant/project/${id}` | [applicantService.ts](../app/services/applicantService.ts) |
+| DELETE | `/api/applicant/project/${id}` | [applicantService.ts](../app/services/applicantService.ts) |
+| GET | `/api/applicant/certificates` | [applicantService.ts](../app/services/applicantService.ts) |
+| POST | `/api/applicant/certificate` | [applicantService.ts](../app/services/applicantService.ts) |
+| PUT | `/api/applicant/certificate/${id}` | [applicantService.ts](../app/services/applicantService.ts) |
+| DELETE | `/api/applicant/certificate/${id}` | [applicantService.ts](../app/services/applicantService.ts) |
+| GET | `/api/applicant/awards` | [applicantService.ts](../app/services/applicantService.ts) |
+| POST | `/api/applicant/award` | [applicantService.ts](../app/services/applicantService.ts) |
+| PUT | `/api/applicant/award/${id}` | [applicantService.ts](../app/services/applicantService.ts) |
+| DELETE | `/api/applicant/award/${id}` | [applicantService.ts](../app/services/applicantService.ts) |
+| POST | `/api/applicant/skills` | [applicantService.ts](../app/services/applicantService.ts) |
+| GET | `/api/applicant/skills` | [applicantService.ts](../app/services/applicantService.ts) |
+| DELETE | `/api/applicant/skill/${id}` | [applicantService.ts](../app/services/applicantService.ts) |
+| GET | `/api/applicant/saved-jobs` | [applicantService.ts](../app/services/applicantService.ts) |
+| GET | `/api/applicant/resent-viewed-jobs` | [applicantService.ts](../app/services/applicantService.ts) |
+| GET | `/api/applicant/applied-jobs` | [applicantService.ts](../app/services/applicantService.ts) |
+| POST | `/api/application/${slug}` | [applicationService.ts](../app/services/applicationService.ts) |
+| DELETE | `/api/application/${id}` | [applicationService.ts](../app/services/applicationService.ts) |
+| GET | `/api/application/job-status` | [applicationService.ts](../app/services/applicationService.ts) |
+| PATCH | `/api/application/${id}/status` | [applicationService.ts](../app/services/applicationService.ts) |
+| POST | `/api/auth/login` | [authService.ts](../app/services/authService.ts) |
+| POST | `/api/auth/register` | [authService.ts](../app/services/authService.ts) |
+| POST | `/api/auth/register-company` | [authService.ts](../app/services/authService.ts) |
+| GET | `/api/auth/account` | [authService.ts](../app/services/authService.ts) |
+| POST | `/api/auth/login-google` | [authService.ts](../app/services/authService.ts) |
+| POST | `/api/auth/logout` | [authService.ts](../app/services/authService.ts) |
+| POST | `/api/auth/forgot-password` | [authService.ts](../app/services/authService.ts) |
+| POST | `/api/auth/reset-password` | [authService.ts](../app/services/authService.ts) |
+| POST | `/api/auth/change-password` | [authService.ts](../app/services/authService.ts) |
+| GET | `/api/auth/delete-code` | [authService.ts](../app/services/authService.ts) |
+| POST | `/api/auth/delete-account` | [authService.ts](../app/services/authService.ts) |
+| GET | `/api/company/${param}` | [companyService.ts](../app/services/companyService.ts) |
+| GET | `/api/company` | [companyService.ts](../app/services/companyService.ts) |
+| PUT | `/api/company/${id}` | [companyService.ts](../app/services/companyService.ts) |
+| POST | `/api/company/follow/${id}` | [companyService.ts](../app/services/companyService.ts) |
+| POST | `/api/company/review/${id}` | [companyService.ts](../app/services/companyService.ts) |
+| GET | `/api/company/review/${id}` | [companyService.ts](../app/services/companyService.ts) |
+| GET | `/api/company/all-job` | [companyService.ts](../app/services/companyService.ts) |
+| GET | `/api/company/all-cv` | [companyService.ts](../app/services/companyService.ts) |
+| GET | `/api/company/all-review` | [companyService.ts](../app/services/companyService.ts) |
+| DELETE | `/api/company/review/${id}` | [companyService.ts](../app/services/companyService.ts) |
+| PATCH | `/api/company/review/${id}/status` | [companyService.ts](../app/services/companyService.ts) |
+| GET | `/api/company/dashboard` | [companyService.ts](../app/services/companyService.ts) |
+| GET | `/api/industry` | [industryService.ts](../app/services/industryService.ts) |
+| GET | `/api/job` | [jobService.ts](../app/services/jobService.ts) |
+| GET | `/api/job/${slug}` | [jobService.ts](../app/services/jobService.ts) |
+| GET | `/api/job/quantity` | [jobService.ts](../app/services/jobService.ts) |
+| GET | `/api/job/company/${param}` | [jobService.ts](../app/services/jobService.ts) |
+| POST | `/api/job/wishlist/${jobId}` | [jobService.ts](../app/services/jobService.ts) |
+| POST | `/api/job` | [jobService.ts](../app/services/jobService.ts) |
+| PUT | `/api/job/${id}` | [jobService.ts](../app/services/jobService.ts) |
+| DELETE | `/api/job/${id}` | [jobService.ts](../app/services/jobService.ts) |
+| GET | `/api/provinces` | [locationService.ts](../app/services/locationService.ts) |
+| POST | `/api/search` | [mainService.ts](../app/services/mainService.ts) |
+| GET | `/api/skill` | [skillService.ts](../app/services/skillService.ts) |
+
+Các route cố định như `/company/all-job`, `/company/dashboard`, `/job/quantity`, `/applicant/educations` cần khai báo trước route động hoặc ràng buộc tham số tương ứng trong Laravel. Giữ đường dẫn `resent-viewed-jobs` hiện có để tương thích UI; tên này là lỗi chính tả của hợp đồng cũ.
