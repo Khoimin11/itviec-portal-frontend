@@ -6,6 +6,7 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "start": "vite preview --outDir build/client",
+    "test:register": "node --experimental-strip-types --test tests/register-schema.test.mjs",
     "test:api": "node --experimental-strip-types --test tests/api-client.test.mjs",
     "typecheck": "react-router typegen && tsc"
   },

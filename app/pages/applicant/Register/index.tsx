@@ -9,6 +9,7 @@ import {
   AuthenticationError,
   RegisterAgreement,
   RegisterButton,
+  RegisterGoogle,
   RegisterGroup,
   RegisterMain,
   RegisterPasswordInput,
@@ -22,9 +23,13 @@ import useValidation from "~/hooks/useValidation";
 import showToast from "~/utils/showToast";
 import authService from "~/services/authService";
 import { schema } from "./schema";
+import { GoogleLogin } from "@react-oauth/google";
+import { useUserStore } from "~/stores/userStore";
 
 const Register = () => {
   const navigate = useNavigate();
+  const [agreementGoogle, setAgreementGoogle] = useState(false);
+  const { login } = useUserStore();
   const [togglePassword, setTogglePassword] = useState(false);
 
   const { t, i18n } = useTranslation(["auth"]);
@@ -104,6 +109,49 @@ const Register = () => {
         </h3>
         <RegisterMain>
           <h1>{t("Sign up")}</h1>
+          <RegisterAgreement $google htmlFor="agreement-google">
+            <input
+              type="checkbox"
+              id="agreement-google"
+              onChange={() => setAgreementGoogle((prev) => !prev)}
+            />
+            <span></span>
+            <div>
+              {t("By signing up with Google, I agree to ITviec")}{" "}
+              <span className="register-rules">{t("Terms & Conditions")}</span>{" "}
+              {t("and")}{" "}
+              <span className="register-rules">{t("Privacy Policy")}</span>{" "}
+              {t("in relation to your privacy information.")}
+            </div>
+          </RegisterAgreement>
+          <RegisterGoogle className={!agreementGoogle ? "disable" : ""}>
+            <GoogleLogin
+              onSuccess={async (credentialResponse) => {
+                const credential = credentialResponse.credential + "";
+                const response = await authService.loginGoogle(credential).catch(reportApiError);
+                if (!response) return;
+                if (response.isSuccess && response.data) {
+                  localStorage.setItem(
+                    "access_token",
+                    response.data.accessToken as string
+                  );
+                  login(response.data.user);
+                  navigate("/");
+                  showToast(
+                    "success",
+                    "Successfully authenticated from Google account."
+                  );
+                }
+              }}
+              onError={() => {
+                showToast("error", "Đăng nhập bằng google thất bại");
+              }}
+              text="signup_with"
+            />
+          </RegisterGoogle>
+          <div className="register-separator">
+            <span>{t("or")}</span>
+          </div>
           <form noValidate onSubmit={handleSubmit(onSubmit)}>
             <RegisterGroup>
               <label htmlFor="username">
