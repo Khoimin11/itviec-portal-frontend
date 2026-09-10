@@ -4,6 +4,7 @@ interface ILogin {
 }
 
 interface IRegister extends ILogin {
+  termsAccepted: boolean;
   username: string;
 }
 
