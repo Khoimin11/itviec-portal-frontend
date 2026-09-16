@@ -1,11 +1,13 @@
 import { reportApiError } from "~/api/reportApiError";
 import { useTranslation } from "react-i18next";
-import { RememberMeCheck, SignInForm, ToastMessage } from "./styled";
+import { SignInForm, ToastMessage } from "./styled";
 import Logo from "/assets/images/logo_black_text.png";
 import InputFloating from "~/components/InputFloating";
 import { useCallback, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { z } from "zod";
+import { ApiError } from "~/api/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import authService from "~/services/authService";
@@ -15,17 +17,20 @@ import { Mail, PhoneCall } from "feather-icons-react";
 
 const Login = () => {
   const { t } = useTranslation(["auth"]);
-  const [isRememberMe, setIsRememberMe] = useState(false);
   const [showError, setShowError] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { login } = useUserStore((s) => s);
 
   const schema = z.object({
-    email: z.string().optional(),
-    password: z.string().optional(),
+    email: z.string().trim().toLowerCase().email(t("Please enter a valid email address")).max(255),
+    password: z.string().min(1, t("Can't be blank")).refine(
+      value => new TextEncoder().encode(value).length <= 72,
+      t("Mật khẩu không được vượt quá 72 byte.")
+    ),
   });
 
-  const { handleSubmit, reset, watch, setValue } = useForm<ILogin>({
+  const { handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<ILogin>({
     defaultValues: {
       email: "",
       password: "",
@@ -35,20 +40,20 @@ const Login = () => {
   });
 
   const onSubmit: SubmitHandler<ILogin> = async (data: ILogin) => {
-    const response = await authService.login(data).catch((error: unknown) => {
-      setShowError(true);
-      return reportApiError(error);
-    });
-    if (!response) return;
-    if (response.isSuccess && response.data) {
+    setShowError(false);
+    try {
+      const response = await authService.loginCompany(data);
+      localStorage.setItem("access_token", response.data.accessToken);
+      queryClient.removeQueries();
       login(response.data.user);
-      localStorage.setItem("access_token", response.data.accessToken as string);
-      // navigate("/employer/dashboard");
-      const redirectUrl = "/employer/dashboard";
-      window.location.href = redirectUrl;
       reset();
-    } else {
-      setShowError(true);
+      navigate("/employer/dashboard", { replace: true });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 422) {
+        setShowError(true);
+      } else {
+        reportApiError(error);
+      }
     }
   };
 
@@ -76,6 +81,7 @@ const Login = () => {
             value={watch("email")}
             type="email"
             label={t("Email")}
+            error={errors.email?.message}
             required={false}
             onSetValue={useCallback(
               (value: string) => setValue("email", value),
@@ -89,6 +95,7 @@ const Login = () => {
             type="password"
             value={watch("password")}
             label={t("Password")}
+            error={errors.password?.message}
             required={false}
             onSetValue={useCallback(
               (value: string) => setValue("password", value),
@@ -130,7 +137,7 @@ const Login = () => {
           {t("in relation to your privacy information.")}
         </div>
         <div className="form-submit">
-          <button>{t("Sign In")}</button>
+          <button disabled={isSubmitting}>{t("Sign In")}</button>
         </div>
         <hr />
         <div className="contact">

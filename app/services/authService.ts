@@ -9,6 +9,9 @@ const authService = {
   login: (body: ILogin): Promise<IResponse<LoginResponse>> => {
     return api.post("/auth/login", body);
   },
+  loginCompany: (body: ILogin): Promise<IResponse<LoginResponse>> => {
+    return api.post("/auth/login-company", body);
+  },
   register: (body: IRegister): Promise<IResponse<null>> => {
     return api.post("/auth/register", body);
   },
