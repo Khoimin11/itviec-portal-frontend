@@ -13,7 +13,7 @@ import { Link } from "react-router";
 import IconCloudflare from "~/components/Icons/IconCloudflare";
 import SelectFloating from "~/components/SelectFloating";
 import cities from "~/constants/cities";
-import { z } from "zod";
+import { ApiError } from "~/api/client";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import useValidation from "~/hooks/useValidation";
@@ -31,10 +31,10 @@ const EmployerContact = () => {
 
   const {
     register,
-    formState: { errors, submitCount },
+    formState: { errors, submitCount, isSubmitting },
     handleSubmit,
     setValue,
-    reset,
+    setError,
     watch,
   } = useForm<RegisterEmployer>({
     defaultValues: {
@@ -53,19 +53,24 @@ const EmployerContact = () => {
   const onSubmit: SubmitHandler<RegisterEmployer> = async (
     data: RegisterEmployer
   ) => {
-    const response = await authService.registerCompany(data).catch(reportApiError);
-    if (!response) return;
-    if (response.isSuccess) {
-      showToast(
-        "success",
-        "Bạn sẽ nhận được email hướng dẫn cách đăng nhập vào nhà tuyển dụng trong vài phút."
-      );
-    } else {
-      const messages = response.message;
-      if (messages && messages.length > 0) {
-        const message = Array.isArray(messages) ? messages[0] : messages;
-        showToast("error", message);
+    if (!agreementCheck) return;
+    try {
+      await authService.registerCompany({ ...data, termsAccepted: agreementCheck });
+      showToast("success", "Đăng ký công ty thành công. Vui lòng kiểm tra email để nhận thông tin đăng nhập.");
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 422) {
+        const fields: (keyof RegisterEmployer)[] = ["username", "position", "email", "phoneNumber", "source", "companyName", "location", "website"];
+        let handled = false;
+        for (const field of fields) {
+          const message = error.errors[field]?.[0];
+          if (message) {
+            setError(field, { type: "server", message });
+            handled = true;
+          }
+        }
+        if (handled) return;
       }
+      reportApiError(error);
     }
   };
 
@@ -242,7 +247,7 @@ const EmployerContact = () => {
                 </div>
                 <ContactButton
                   className={agreementCheck ? "active" : ""}
-                  disabled={!agreementCheck}
+                  disabled={!agreementCheck || isSubmitting}
                   type="submit">
                   {t("Contact me")}
                 </ContactButton>

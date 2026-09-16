@@ -5,14 +5,14 @@ import InputFloating from "~/components/InputFloating";
 import { useTranslation } from "react-i18next";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { ApiError } from "~/api/client";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import showToast from "~/utils/showToast";
 import authService from "~/services/authService";
 import useValidation from "~/hooks/useValidation";
 import { schema } from "./schema";
 
-const ForgotPassword = () => {
+const ResetPassword = () => {
   const { t } = useTranslation(["auth"]);
 
   const [searchParams] = useSearchParams();
@@ -20,15 +20,12 @@ const ForgotPassword = () => {
   const emailParams = searchParams.get("email");
   const emailStorage = localStorage.getItem("email-company");
 
-  if (!emailParams || emailParams !== emailStorage)
-    return <Navigate to={"employer/login"} replace />;
-
   const {
-    register,
-    formState: { errors },
+    formState: { errors, isSubmitting },
     handleSubmit,
     watch,
     setValue,
+    setError,
   } = useForm<IResetPassword>({
     defaultValues: {
       newPassword: "",
@@ -41,28 +38,30 @@ const ForgotPassword = () => {
   const onSubmit: SubmitHandler<IResetPassword> = async (
     data: IResetPassword
   ) => {
-    const response = await authService.resetPassword(
-      emailParams,
-      data.newPassword
-    ).catch(reportApiError);
-    if (!response) return;
-    if (response.isSuccess) {
+    if (!emailParams) return;
+    try {
+      await authService.resetPassword(emailParams, data.newPassword);
       showToast("success", t("Đổi mật khẩu thành công"));
-      setTimeout(() => {
-        navigate("/employer/login");
-        localStorage.removeItem("email-company");
-      }, 3000);
-    } else {
-      const messages = response.message;
-      if (messages && messages.length > 0) {
-        const message = Array.isArray(messages) ? messages[0] : messages;
-        showToast("error", message);
+      localStorage.removeItem("email-company");
+      navigate("/employer/login", { replace: true });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 422) {
+        const passwordError = error.errors.password?.[0];
+        if (passwordError) {
+          setError("newPassword", { type: "server", message: passwordError });
+          return;
+        }
       }
+      reportApiError(error);
     }
   };
 
   const isValidNewPassword = useValidation(watch("newPassword"));
   const isValidConfirmPassword = useValidation(watch("confirmPassword"));
+
+  if (!emailParams || emailParams !== emailStorage) {
+    return <Navigate to="/employer" replace />;
+  }
 
   return (
     <SignInForm>
@@ -109,11 +108,11 @@ const ForgotPassword = () => {
           </p>
         </NoteAccount>
         <div className="form-submit">
-          <button>{t("Update new Password")}</button>
+          <button disabled={isSubmitting}>{t("Update new Password")}</button>
         </div>
       </form>
     </SignInForm>
   );
 };
 
-export default ForgotPassword;
+export default ResetPassword;

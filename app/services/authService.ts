@@ -12,7 +12,7 @@ const authService = {
   register: (body: IRegister): Promise<IResponse<null>> => {
     return api.post("/auth/register", body);
   },
-  registerCompany: (body: RegisterEmployer): Promise<IResponse<null>> => {
+  registerCompany: (body: RegisterEmployer & { termsAccepted: boolean }): Promise<IResponse<null>> => {
     return api.post("/auth/register-company", body);
   },
   account: (): Promise<IResponse<User>> => {

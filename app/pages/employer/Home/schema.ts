@@ -5,30 +5,37 @@ export const schema = (t: TFunction) => {
   return z.object({
     username: z
       .string()
+      .trim()
       .nonempty({ message: t("Please let us know your name") })
       .min(4, t("Please enter at least 4 characters")),
     position: z
       .string()
+      .trim()
       .nonempty({ message: t("Please let us know your title") })
       .min(3, t("Please enter at least 3 characters")),
     email: z
       .string()
+      .trim()
       .nonempty({ message: t("Please provide your work email address") })
+      .toLowerCase()
       .email({ message: t("Please enter a valid email address") }),
     phoneNumber: z
       .string()
+      .trim()
       .nonempty({ message: t("Please provide your phone number") })
       .regex(/^(0[1-9][0-9]{8,9})$/, {
         message: t("Please enter a valid phone number"),
       }),
-    source: z.string(),
+    source: z.string().optional(),
     companyName: z
       .string()
+      .trim()
       .nonempty({ message: t("Please let us know your company name") })
       .min(4, t("Please enter at least 4 characters")),
     location: z.string().nonempty({ message: t("Please select a city") }),
     website: z
       .string()
+      .trim()
       .optional()
       .refine(
         (value) =>

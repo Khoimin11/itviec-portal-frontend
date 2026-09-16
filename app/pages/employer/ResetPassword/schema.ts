@@ -13,7 +13,8 @@ export const schema = (t: TFunction) => {
           t(
             "Password must contain at least 12 characters. Combination of symbols, numbers, uppercase letters, lowercase letters."
           )
-        ),
+        )
+        .refine(value => new TextEncoder().encode(value).length <= 72, t("Mật khẩu không được vượt quá 72 byte.")),
       confirmPassword: z
         .string()
         .nonempty({ message: t("Can't be blank") })
