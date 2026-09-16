@@ -1,4 +1,5 @@
 import { reportApiError } from "~/api/reportApiError";
+import { ApiError } from "~/api/client";
 import { useEffect, useState } from "react";
 import { NavbarWrapper } from "./styled";
 import { NavLink } from "react-router";
@@ -18,6 +19,7 @@ import { useTranslation } from "react-i18next";
 const Navbar = () => {
   const { t } = useTranslation(["header"]);
   const [showNavbar, setShowNavbar] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { id: userId } = useUserStore((s) => s.user);
   const logout = useUserStore((s) => s.logout);
   const { handleSaveCompany } = useCompanyStore((s) => s);
@@ -34,12 +36,26 @@ const Navbar = () => {
   }, [isSuccess, company]);
 
   const handleLogout = async () => {
-    const response = await authService.logout().catch(reportApiError);
-    if (!response) return;
-    if (response.isSuccess) {
-      localStorage.removeItem("access_token");
-      logout();
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    const token = localStorage.getItem("access_token");
+    try {
+      await authService.logout();
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 401)) {
+        reportApiError(error);
+        setIsLoggingOut(false);
+        return;
+      }
     }
+    const currentToken = localStorage.getItem("access_token");
+    if (currentToken && currentToken !== token) {
+      setIsLoggingOut(false);
+      return;
+    }
+    localStorage.removeItem("access_token");
+    logout();
+    window.location.replace("/employer/login");
   };
 
   return (
@@ -74,7 +90,7 @@ const Navbar = () => {
               <span>{t(link.label)}</span>
             </NavLink>
           ))}
-          <a onClick={handleLogout}>
+          <a onClick={handleLogout} aria-disabled={isLoggingOut}>
             <LogIn />
             <span>{t("Sign out")}</span>
           </a>
