@@ -1,10 +1,5 @@
 import api from "~/api";
 
-export interface UpdateCompanyPayload {
-  id: number;
-  body: FormData;
-}
-
 export interface CreateReviewPayload {
   id: number;
   body: Review;
@@ -30,17 +25,12 @@ export interface GetAllReviewResonse {
 }
 
 const companyService = {
+  getProfile: (): Promise<IResponse<Company>> => api.get("/company/profile"),
   getDetail: (param: string | number): Promise<IResponse<Company>> => {
     return api.get(`/company/${param}`);
   },
   getAll: (params: any): Promise<IResponse<Company[]>> => {
     return api.get(`/company`, { params });
-  },
-  update: ({
-    id,
-    body,
-  }: UpdateCompanyPayload): Promise<IResponse<Company[]>> => {
-    return api.put(`/company/${id}`, body);
   },
   follow: (id: number): Promise<IResponse<boolean>> => {
     return api.post(`/company/follow/${id}`);

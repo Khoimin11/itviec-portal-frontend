@@ -2,7 +2,6 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useState,
   type Dispatch,
   type SetStateAction,
 } from "react";
@@ -73,34 +72,33 @@ interface IProps {
 }
 const RichTextEditor = ({ content, setContent }: IProps) => {
   const { t } = useTranslation(["search"]);
-  const serializedToSlate = htmlToSlate(content, convertHtmlToSlate);
-
-  const [slate, setSlate] = useState<Descendant[]>(
-    serializedToSlate.length > 0 ? serializedToSlate : initialValue
-  );
   const renderElement = useCallback((props: any) => <Element {...props} />, []);
   const renderLeaf = useCallback((props: any) => <Leaf {...props} />, []);
   const editor = useMemo(() => withHistory(withReact(createEditor())), []);
-
-  const html = convertSlateToHtml({
-    content: slate as any,
-  });
-
-  useEffect(() => {
-    setContent(html);
-  }, [slate]);
+  const initialContent = useMemo(() => {
+    const nodes = htmlToSlate(content, convertHtmlToSlate);
+    return nodes.length ? nodes : initialValue;
+  }, []);
+  const html = content;
 
   useEffect(() => {
-    const serializedToSlate = htmlToSlate(content, convertHtmlToSlate);
-    setSlate(serializedToSlate.length > 0 ? serializedToSlate : initialValue);
-  }, [content]);
+    if (convertSlateToHtml({ content: editor.children }) === content) return;
+    const nodes = htmlToSlate(content, convertHtmlToSlate);
+    editor.children = nodes.length ? nodes : initialValue;
+    editor.selection = null;
+    editor.history = { undos: [], redos: [] };
+    editor.onChange();
+  }, [content, editor]);
 
   return (
     <Slate
-      key={JSON.stringify(slate)}
       editor={editor}
-      initialValue={slate}
-      onChange={(newValue) => setSlate(newValue)}>
+      initialValue={initialContent}
+      onChange={(value) => {
+        if (editor.operations.some(operation => operation.type !== "set_selection")) {
+          setContent(convertSlateToHtml({ content: value }));
+        }
+      }}>
       <Toolbar>
         <MarkButton format="bold" icon={<Bold />} />
         <MarkButton format="italic" icon={<Italic />} />

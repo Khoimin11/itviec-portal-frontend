@@ -46,7 +46,7 @@ export const convertHtmlToSlate: Config = {
 
 const serialize = (node: any) => {
   if (node.text) {
-    let string = node.text;
+    let string = node.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     if (node.bold) {
       string = `<strong>${string}</strong>`;
     }

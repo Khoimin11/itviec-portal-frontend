@@ -23,7 +23,7 @@ const Navbar = () => {
   const { id: userId } = useUserStore((s) => s.user);
   const logout = useUserStore((s) => s.logout);
   const { handleSaveCompany } = useCompanyStore((s) => s);
-  const { data: company, isPending, isSuccess } = useCompanyQuery(userId);
+  const { data: company, isPending, isSuccess } = useCompanyQuery(userId, true);
   const { saveSelectedSkillIds } = useSkillStore();
 
   useEffect(() => {
