@@ -1,3 +1,8 @@
+import { ApiError } from "~/api/client";
+import { reportApiError } from "~/api/reportApiError";
+import companyService from "~/services/companyService";
+import { useCompanyStore } from "~/stores/companyStore";
+import showToast from "~/utils/showToast";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   CompanyInfoContainer,
@@ -14,7 +19,7 @@ import SelectFloating from "~/components/SelectFloating";
 import cities from "~/constants/cities";
 import RichTextEditor from "~/components/RichTextEditor";
 import useValidation from "~/hooks/useValidation";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import skillService from "~/services/skillService";
 import useDebounce from "~/hooks/useDebounce";
 import InputSearch from "~/components/InputSearch";
@@ -35,6 +40,10 @@ const MAX_SKILLS = 10;
 
 const CompanyProfile = () => {
   const { t, i18n } = useTranslation(["search"]);
+  const [previewLogo, setPreviewLogo] = useState("");
+  const queryClient = useQueryClient();
+  const { updateCompanyInfo } = useUserStore();
+  const { handleSaveCompany } = useCompanyStore();
   const [overview, setOverview] = useState("");
   const [perks, setPerks] = useState("");
 
@@ -48,6 +57,8 @@ const CompanyProfile = () => {
     register,
     formState: { errors, submitCount },
     getValues,
+    handleSubmit,
+    setError,
     setValue,
     reset,
     watch,
@@ -80,11 +91,68 @@ const CompanyProfile = () => {
         logo: company.logo || "",
         id: company.id || 0,
       });
+      setPreviewLogo("");
       setOverview(company.overview || "");
       setPerks(company.perks || "");
       saveSelectedSkillIds(company.skills?.map(skill => skill.id) ?? []);
     }
   }, [profile, reset, saveSelectedSkillIds]);
+
+
+  useEffect(() => {
+    return () => { if (previewLogo) URL.revokeObjectURL(previewLogo); };
+  }, [previewLogo]);
+
+  const updateCompanyMutation = useMutation({
+    mutationFn: (body: FormData) => companyService.update({ body }),
+    onSuccess: ({ data }) => {
+      updateCompanyInfo({ username: data.username, email: data.email, phoneNumber: data.phoneNumber });
+      handleSaveCompany(data);
+      queryClient.setQueryData(["company-profile", userId], { isSuccess: true, message: "", data });
+      showToast("success", "Cập nhật hồ sơ thành công");
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 422) {
+        const fields: (keyof Company)[] = ["username", "position", "email", "phoneNumber", "companyName", "location", "website", "tagline", "companyType", "industryId", "companySize", "country", "workingDay", "overtimePolicy", "overview", "perks", "skillIds", "logo"];
+        for (const field of fields) {
+          const message = error.errors[field]?.[0];
+          if (message) setError(field, { type: "server", message });
+        }
+      }
+      reportApiError(error);
+    },
+  });
+
+  const onSubmit = (data: Company) => {
+    if (!profile || updateCompanyMutation.isPending) return;
+    const formData = new FormData();
+    Object.entries({ ...data, overview, perks }).forEach(([key, value]) => {
+      if (key === "skillIds" || key === "id") return;
+      if (key === "logo") {
+        if (value instanceof File) formData.append("logo", value);
+      } else {
+        formData.append(key, String(value ?? ""));
+      }
+    });
+    if (selectedSkillIds.length) {
+      selectedSkillIds.forEach(id => formData.append("skillIds[]", String(id)));
+    } else {
+      formData.append("skillIds", "");
+    }
+    updateCompanyMutation.mutate(formData);
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 2 * 1024 * 1024) {
+      showToast("error", "Logo phải là ảnh JPG, PNG hoặc WebP, tối đa 2 MB.");
+      event.target.value = "";
+      return;
+    }
+    setPreviewLogo(URL.createObjectURL(file));
+    setValue("logo", file);
+  };
 
   const isValidUsername = useValidation(watch("username"), username);
   const isValidPosition = useValidation(watch("position"), company?.position);
@@ -148,13 +216,13 @@ const CompanyProfile = () => {
 
   return (
     <CompanyInfoWrapper>
-      {isLoading && <Loading />}
+      {(isLoading || updateCompanyMutation.isPending) && <Loading />}
       <div className="heading">
         <h2>{t("Company Profile", { ns: "header" })}</h2>
       </div>
       <CompanyInfoContainer>
         <CompanyInfoMain>
-          <form onSubmit={(event) => event.preventDefault()}>
+          <form onSubmit={handleSubmit(onSubmit)}>
             <div className="form-group input-row">
               <InputFloating
                 name="username"
@@ -428,7 +496,7 @@ const CompanyProfile = () => {
               />
             </div>
             <div className="form-submit">
-              <button type="button" disabled>
+              <button type="submit" disabled={updateCompanyMutation.isPending}>
                 {t("Update Profile")}
               </button>
             </div>
@@ -440,8 +508,8 @@ const CompanyProfile = () => {
               <img
                 src={
                   watch("id") && watch("logo")
-                    ? getValues("logo") + ""
-                    : "/assets/svg/avatar-default.svg"
+                    ? previewLogo || getValues("logo") + ""
+                    : previewLogo || "/assets/svg/avatar-default.svg"
                 }
                 alt="company logo"
               />
@@ -455,7 +523,8 @@ const CompanyProfile = () => {
                 id="logo"
                 name="logo"
                 hidden
-                disabled
+                onChange={handleFileChange}
+                disabled={updateCompanyMutation.isPending}
               />
               <Upload />
               <div className="selected-file">{t("Upload Logo")}</div>

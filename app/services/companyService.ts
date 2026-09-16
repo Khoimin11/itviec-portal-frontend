@@ -24,7 +24,13 @@ export interface GetAllReviewResonse {
   pagination: Pagination;
 }
 
+export interface UpdateCompanyPayload {
+  body: FormData;
+}
+
 const companyService = {
+  update: ({ body }: UpdateCompanyPayload): Promise<IResponse<Company>> =>
+    api.put("/company/profile", body, { timeout: 60000 }),
   getProfile: (): Promise<IResponse<Company>> => api.get("/company/profile"),
   getDetail: (param: string | number): Promise<IResponse<Company>> => {
     return api.get(`/company/${param}`);
