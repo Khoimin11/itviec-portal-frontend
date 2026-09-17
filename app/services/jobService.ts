@@ -27,7 +27,7 @@ const jobService = {
     return api.post(`/job/wishlist/${jobId}`);
   },
 
-  create: (body: CompanyJob): Promise<IResponse<CompanyJob>> => {
+  create: (body: CompanyJob): Promise<IResponse<{ id: number }>> => {
     return api.post(`/job`, body);
   },
 

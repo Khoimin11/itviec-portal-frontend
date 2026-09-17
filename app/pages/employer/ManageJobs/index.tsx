@@ -1,3 +1,5 @@
+import { ApiError } from "~/api/client";
+import { reportApiError } from "~/api/reportApiError";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   customStyles,
@@ -72,7 +74,6 @@ const ManageJobs = () => {
     pagination,
     handleSaveJobs,
     handleSavePagination,
-    handleCreateJob,
     handleUpdateJob,
   } = useCompanyStore();
   const workingModels = getModels(t);
@@ -88,6 +89,7 @@ const ManageJobs = () => {
     handleSubmit,
     watch,
     setValue,
+    setError,
     reset,
   } = useForm<CompanyJob>({
     defaultValues: {
@@ -120,17 +122,21 @@ const ManageJobs = () => {
 
   const createJobMutation = useMutation({
     mutationFn: (body: CompanyJob) => jobService.create(body),
-
-    onSuccess: (response) => {
-      const message = response.message as string;
-      const data = response.data as CompanyJob;
-      if (!data && message) {
-        showToast("error", message);
-        return;
-      }
-      showToast("success", message);
-      handleCreateJob(data);
+    onSuccess: ({ message }) => {
+      showToast("success", String(message));
       closeModal();
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 422) {
+        const fields: (keyof CompanyJob)[] = ["title", "label", "currencySalary", "minSalary", "maxSalary", "level", "workingModel", "location", "address", "startDate", "endDate"];
+        for (const field of fields) {
+          const message = error.errors[field]?.[0];
+          if (message) setError(field, { type: "server", message });
+        }
+        const skillError = Object.entries(error.errors).find(([key]) => key === "skillIds" || key.startsWith("skillIds."));
+        if (skillError) setError("skill", { type: "server", message: skillError[1][0] });
+      }
+      reportApiError(error);
     },
   });
 
@@ -151,6 +157,11 @@ const ManageJobs = () => {
   });
 
   const onSubmit: SubmitHandler<CompanyJob> = async (data: CompanyJob) => {
+    if (createJobMutation.isPending || updateJobMutation.isPending) return;
+    if (!skillOptionsTmp.length) {
+      setError("skill", { type: "manual", message: "Vui lòng chọn ít nhất một kỹ năng." });
+      return;
+    }
     data.description = description;
     data.requirement = requirement;
     data.reason = reason;
@@ -234,11 +245,11 @@ const ManageJobs = () => {
           label: data.name,
         }))
         .filter((option: Option) =>
-          skillOptionsTmp.map((skill) => skill.value !== option.value)
+          !skillOptionsTmp.some((skill) => String(skill.value) === String(option.value))
         );
       setSkillOptions(options);
     }
-  }, [skills, skillsPending]);
+  }, [skills, skillsPending, skillOptionsTmp]);
 
   const handleOpenModalDelete = (job: CompanyJob) => {
     setSelectedJob(job);
