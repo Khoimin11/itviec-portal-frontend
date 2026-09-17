@@ -1,6 +1,6 @@
 import { ApiError } from "~/api/client";
 import { reportApiError } from "~/api/reportApiError";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   customStyles,
   LabelRadio,
@@ -48,7 +48,6 @@ import jobService from "~/services/jobService";
 import showToast from "~/utils/showToast";
 import { useModalStore } from "~/stores/modalStore";
 import formatSalaryRange from "~/utils/formatSalaryRange";
-import Pagination from "~/components/Pagination";
 import ModalView from "./ModalView";
 import ModalDelete from "./ModalDelete";
 import Skeleton from "react-loading-skeleton";
@@ -70,10 +69,6 @@ const ManageJobs = () => {
   const [currencyValue, setCurrencyValue] = useState<string[]>([]);
   const [selectedValue, setSelectedValue] = useState<string | null>(null);
   const {
-    jobs,
-    pagination,
-    handleSaveJobs,
-    handleSavePagination,
     handleUpdateJob,
   } = useCompanyStore();
   const workingModels = getModels(t);
@@ -125,6 +120,7 @@ const ManageJobs = () => {
     onSuccess: ({ message }) => {
       showToast("success", String(message));
       closeModal();
+      void refetchJobs();
     },
     onError: (error) => {
       if (error instanceof ApiError && error.status === 422) {
@@ -203,34 +199,7 @@ const ManageJobs = () => {
   );
   const isValidEndDate = useValidation(watch("endDate"), selectedJob?.endDate);
 
-  const params = useMemo(
-    () => ({
-      page: pagination.page || 1,
-      limit: pagination.limit || 10,
-      ...(sortValue.length > 0 ? { sort: sortValue.join(",") } : {}),
-      ...(statusValue.length > 0 ? { status: statusValue } : {}),
-      ...(levelValue.length > 0 ? { levels: levelValue } : {}),
-      ...(currencyValue.length > 0 ? { currencies: currencyValue } : {}),
-    }),
-    [
-      pagination.page,
-      pagination.limit,
-      sortValue,
-      statusValue,
-      levelValue,
-      currencyValue,
-    ]
-  );
-
-  const { data: companyJobs, isPending: companyJobsPending } =
-    useGetAllJobQuery(params as any);
-
-  useEffect(() => {
-    if (!companyJobsPending && companyJobs) {
-      handleSaveJobs(companyJobs?.data || []);
-      handleSavePagination(companyJobs?.pagination || {});
-    }
-  }, [companyJobs, companyJobsPending]);
+  const { data: jobs = [], isPending: companyJobsPending, isError: jobsError, refetch: refetchJobs } = useGetAllJobQuery();
 
   const skillDebounce = useDebounce(watch("skill") + "", 1000);
 
@@ -647,7 +616,7 @@ const ManageJobs = () => {
                 jobs.map((job, index) => (
                   <tr key={job.id}>
                     <td>
-                      {(pagination.page - 1) * pagination.limit + index + 1}
+                      {index + 1}
                     </td>
                     <td>
                       <p>{job.title}</p>
@@ -723,7 +692,7 @@ const ManageJobs = () => {
                     <td>
                       {job.deletedAt ? (
                         <div className="status deleted">{t("Deleted")}</div>
-                      ) : job.endDate && new Date(job.endDate) < new Date() ? (
+                      ) : job.endDate && new Date(job.endDate + "T23:59:59") < new Date() ? (
                         <div className="status expired">{t("Expired")}</div>
                       ) : (
                         <div className="status success">{t("Active")}</div>
@@ -755,7 +724,7 @@ const ManageJobs = () => {
                 <tr>
                   <td colSpan={7}>
                     <div style={{ textAlign: "center" }}>
-                      {t("No jobs available")}
+                      {jobsError ? <><span>Không tải được danh sách việc làm. </span><button type="button" onClick={() => refetchJobs()}>Thử lại</button></> : t("No jobs available")}
                     </div>
                   </td>
                 </tr>
@@ -763,12 +732,6 @@ const ManageJobs = () => {
             </tbody>
           </table>
         </ManageJobsTable>
-      )}
-      {jobs.length > 0 && (
-        <Pagination
-          pagination={pagination}
-          onChangePagination={handleSavePagination}
-        />
       )}
       <ModalView selectedJob={selectedJob} onClose={handleCloseModalView} />
       <Modal

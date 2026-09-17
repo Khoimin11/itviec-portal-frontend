@@ -1,16 +1,14 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import companyService, {
-  type GetCompanyJobsResonse,
-} from "~/services/companyService";
+import { useQuery } from "@tanstack/react-query";
+import companyService from "~/services/companyService";
+import { useUserStore } from "~/stores/userStore";
 
-export const useGetAllJobQuery = (params: any) => {
-  const { data, isPending, isSuccess } = useQuery({
-    queryKey: ["all-job", params],
-    queryFn: () => companyService.getAllJob(params),
-    select: ({ data }) => data as GetCompanyJobsResonse,
-    staleTime: 1000 * 30,
-    placeholderData: keepPreviousData,
+export const useGetAllJobQuery = () => {
+  const companyId = useUserStore((state) => state.user.id);
+  return useQuery({
+    queryKey: ["all-job", companyId],
+    queryFn: () => companyService.getAllJob(),
+    select: ({ data }) => data,
+    enabled: Boolean(companyId),
+    staleTime: 30_000,
   });
-
-  return { data, isPending, isSuccess };
 };

@@ -10,11 +10,6 @@ export interface GetReviewsResonse {
   pagination: CursorPagination;
 }
 
-export interface GetCompanyJobsResonse {
-  data: CompanyJob[];
-  pagination: Pagination;
-}
-
 export interface GetAllCVResonse {
   data: CVApplication[];
   pagination: Pagination;
@@ -55,8 +50,8 @@ const companyService = {
   ): Promise<IResponse<GetReviewsResonse>> => {
     return api.get(`/company/review/${id}`, { params });
   },
-  getAllJob: (params: any): Promise<IResponse<GetCompanyJobsResonse>> => {
-    return api.get(`/company/all-job`, { params });
+  getAllJob: (): Promise<IResponse<CompanyJob[]>> => {
+    return api.get("/company/all-job");
   },
   getAllCV: (params: any): Promise<IResponse<GetAllCVResonse>> => {
     return api.get(`/company/all-cv`, { params });
