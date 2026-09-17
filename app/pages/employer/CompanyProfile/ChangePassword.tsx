@@ -4,7 +4,9 @@ import { useTranslation } from "react-i18next";
 import { useModalStore } from "~/stores/modalStore";
 import { schemaChangePassword } from "./schema";
 import { useMutation } from "@tanstack/react-query";
-import authService from "~/services/authService";
+import companyService from "~/services/companyService";
+import { ApiError } from "~/api/client";
+import { reportApiError } from "~/api/reportApiError";
 import showToast from "~/utils/showToast";
 import useValidation from "~/hooks/useValidation";
 import Modal from "react-modal";
@@ -22,6 +24,7 @@ const ChangePassword = () => {
     handleSubmit,
     watch,
     setValue,
+    setError,
     reset,
   } = useForm<IChangePassword>({
     defaultValues: {
@@ -34,30 +37,32 @@ const ChangePassword = () => {
   });
 
   const closeModal = () => {
+    if (changePasswordMutation.isPending) return;
     reset();
     handleCloseModal("change-password");
   };
 
   const changePasswordMutation = useMutation({
-    mutationFn: (body: IChangePassword) => authService.changePassword(body),
-
-    onSuccess: (response) => {
-      const message = response.message as string;
-      const data = response.data as boolean;
-      if (!data) {
-        showToast("error", message);
-        reset();
-        return;
+    mutationFn: (body: IChangePassword) => companyService.changePassword(body),
+    onSuccess: ({ message }) => {
+      showToast("success", String(message));
+      reset();
+      handleCloseModal("change-password");
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 422) {
+        const fields: (keyof IChangePassword)[] = ["currentPassword", "newPassword", "confirmPassword"];
+        for (const field of fields) {
+          const message = error.errors[field]?.[0];
+          if (message) setError(field, { type: "server", message });
+        }
       }
-      showToast("success", message);
-      closeModal();
+      reportApiError(error);
     },
   });
 
-  const onSubmit: SubmitHandler<IChangePassword> = async (
-    data: IChangePassword
-  ) => {
-    changePasswordMutation.mutate(data);
+  const onSubmit: SubmitHandler<IChangePassword> = (data) => {
+    if (!changePasswordMutation.isPending) changePasswordMutation.mutate(data);
   };
 
   const isValidCurrent = useValidation(watch("currentPassword"));
@@ -149,8 +154,8 @@ const ChangePassword = () => {
               />
             </div>
             <div className="modal-foot">
-              <button className="update">{t("Update")}</button>
-              <button className="cancel" onClick={closeModal}>
+              <button type="submit" className="update" disabled={changePasswordMutation.isPending}>{t("Update")}</button>
+              <button type="button" className="cancel" onClick={closeModal} disabled={changePasswordMutation.isPending}>
                 {t("Cancel")}
               </button>
             </div>

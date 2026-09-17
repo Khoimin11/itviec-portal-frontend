@@ -29,6 +29,8 @@ export interface UpdateCompanyPayload {
 }
 
 const companyService = {
+  changePassword: (body: IChangePassword): Promise<IResponse<boolean>> =>
+    api.put("/company/password", body),
   update: ({ body }: UpdateCompanyPayload): Promise<IResponse<Company>> =>
     api.put("/company/profile", body, { timeout: 60000 }),
   getProfile: (): Promise<IResponse<Company>> => api.get("/company/profile"),

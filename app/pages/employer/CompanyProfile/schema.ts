@@ -99,7 +99,15 @@ export const schemaChangePassword = (t: TFunction) => {
         .nonempty({ message: t("Please re-enter your new password") })
         .min(12, t("Minimum 12 characters")),
     })
-    .superRefine(({ confirmPassword, newPassword }, ctx) => {
+    .superRefine(({ currentPassword, confirmPassword, newPassword }, ctx) => {
+      for (const [field, value] of [["currentPassword", currentPassword], ["newPassword", newPassword]] as const) {
+        if (new TextEncoder().encode(value).length > 72) {
+          ctx.addIssue({ code: "custom", message: "Mật khẩu không được vượt quá 72 byte.", path: [field] });
+        }
+      }
+      if (newPassword === currentPassword) {
+        ctx.addIssue({ code: "custom", message: "Mật khẩu mới phải khác mật khẩu hiện tại.", path: ["newPassword"] });
+      }
       if (confirmPassword !== newPassword) {
         ctx.addIssue({
           code: "custom",
