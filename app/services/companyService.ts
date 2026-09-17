@@ -23,7 +23,18 @@ export interface UpdateCompanyPayload {
   body: FormData;
 }
 
+export interface TopEmployer {
+  id: number;
+  slug: string;
+  companyName: string;
+  location: string;
+  logo: string;
+  skills: { id: number; name: string }[];
+  jobsCount: number;
+}
+
 const companyService = {
+  getTopEmployers: (): Promise<IResponse<TopEmployer[]>> => api.get("/company/top-employers"),
   changePassword: (body: IChangePassword): Promise<IResponse<boolean>> =>
     api.put("/company/password", body),
   update: ({ body }: UpdateCompanyPayload): Promise<IResponse<Company>> =>

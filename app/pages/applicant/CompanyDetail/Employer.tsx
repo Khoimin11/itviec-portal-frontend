@@ -79,7 +79,7 @@ const Employer = ({ data, jobs }: IProps) => {
           <Link to={"/company/" + data.slug} className="company-logo">
             <img
               src={
-                data.logo === null
+                !data.logo
                   ? "/assets/svg/avatar-default.svg"
                   : data.logo + ""
               }

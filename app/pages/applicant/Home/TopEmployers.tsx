@@ -4,18 +4,24 @@ import { useTranslation } from "react-i18next";
 import IconOnline from "~/components/Icons/IconOnline";
 import Skeleton from "react-loading-skeleton";
 import { ChevronRight } from "feather-icons-react";
-import { useEffect } from "react";
-import { useCompanyStore } from "~/stores/companyStore";
+import { useQuery } from "@tanstack/react-query";
+import companyService from "~/services/companyService";
 
 const TopEmployers = () => {
   const { t } = useTranslation(["home"]);
-  const { companies, isLoading } = useCompanyStore();
+  const { data: companies = [], isPending: isLoading, isError, refetch } = useQuery({
+    queryKey: ["top-employers"],
+    queryFn: () => companyService.getTopEmployers(),
+    select: ({ data }) => data,
+  });
 
   return (
     <MainWrapper>
       <MainContainer>
         <TopEmployersWrapper>
           <div className="employer-heading">{t("Top Employers")}</div>
+          {isError && <p>Không tải được danh sách nhà tuyển dụng. <button type="button" onClick={() => refetch()}>Thử lại</button></p>}
+          {!isLoading && !isError && companies.length === 0 && <p>Chưa có nhà tuyển dụng có việc làm.</p>}
           <div className="employer-container">
             {isLoading ? (
               <>
@@ -45,7 +51,7 @@ const TopEmployers = () => {
                     <figure className="company-logo">
                       <img
                         src={
-                          company.logo + "" || "/assets/svg/avatar-default.svg"
+                          company.logo || "/assets/svg/avatar-default.svg"
                         }
                         alt="logo company"
                       />
@@ -66,7 +72,7 @@ const TopEmployers = () => {
                     <div className="company-jobs">
                       <IconOnline />
                       <span>
-                        {company.jobs.length} {t("Jobs")}
+                        {company.jobsCount} {t("Jobs")}
                       </span>
                       <ChevronRight />
                     </div>

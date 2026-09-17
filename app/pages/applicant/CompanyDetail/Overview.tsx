@@ -83,12 +83,12 @@ const Overview = ({ company }: IProps) => {
           dangerouslySetInnerHTML={{
             __html: DOMPurify.sanitize(company.perks),
           }}></div>
-        <div className="company-website">
+        {company.website && <div className="company-website">
           <Link to={company.website} className="company-path">
             <Globe />
             <span>{t("Company website")}</span>
           </Link>
-        </div>
+        </div>}
       </CompanyReasons>
     </>
   );
