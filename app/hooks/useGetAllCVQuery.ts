@@ -1,16 +1,14 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import companyService, {
-  type GetAllCVResonse,
-} from "~/services/companyService";
+import { useQuery } from "@tanstack/react-query";
+import companyService from "~/services/companyService";
+import { useUserStore } from "~/stores/userStore";
 
-export const useGetAllCVQuery = (params: any) => {
-  const { data, isPending, isSuccess } = useQuery({
-    queryKey: ["all-cv", params],
-    queryFn: () => companyService.getAllCV(params),
-    select: ({ data }) => data as GetAllCVResonse,
-    staleTime: 1000 * 30,
-    placeholderData: keepPreviousData,
+export const useGetAllCVQuery = () => {
+  const companyId = useUserStore((state) => state.user.id);
+  return useQuery({
+    queryKey: ["all-cv", companyId],
+    queryFn: () => companyService.getAllCV(),
+    select: ({ data }) => data,
+    enabled: Boolean(companyId),
+    staleTime: 30_000,
   });
-
-  return { data, isPending, isSuccess };
 };

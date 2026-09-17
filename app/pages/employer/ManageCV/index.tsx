@@ -1,62 +1,34 @@
 import { ManageCVTable, ManageCVWrapper } from "./styled";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, Edit, Eye, Play, Trash2 } from "feather-icons-react";
-import { useModalStore } from "~/stores/modalStore";
 import { useGetAllCVQuery } from "~/hooks/useGetAllCVQuery";
-import { useCompanyStore } from "~/stores/companyStore";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import Pagination from "~/components/Pagination";
+import { useMemo, useState } from "react";
 import { formatTime } from "~/utils/formatTime";
-import ModalDelete from "./ModalDelete";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
-import ModalView from "./ModalView";
-import ModalEdit from "./ModalEdit";
 import FilterBox from "~/components/FilterBox";
 
 const ManageCV = () => {
   const { t } = useTranslation(["apply"]);
-  const { handleCloseModal, handleOpenModal } = useModalStore();
-  const [selectedApplication, setSelectedApplication] =
-    useState<CVApplication | null>(null);
   const [sortValue, setSortValue] = useState<string[]>([]);
   const [statusValue, setStatusValue] = useState<string[]>([]);
   const [selectedValue, setSelectedValue] = useState<string | null>(null);
-  const {
-    CVApplications,
-    pagination,
-    handleSaveCVApplications,
-    handleSavePagination,
-  } = useCompanyStore();
-
-  const params = useMemo(() => {
-    return {
-      limit: pagination.limit || 10,
-      page: pagination.page || 1,
-      ...(sortValue.length > 0 ? { sort: sortValue.join(",") } : {}),
-      ...(statusValue.length > 0 ? { status: statusValue } : {}),
-    };
-  }, [pagination.limit, pagination.page, sortValue, statusValue]);
-
-  const { data, isPending } = useGetAllCVQuery(params as any);
-
-  useEffect(() => {
-    if (!isPending && data) {
-      handleSaveCVApplications(data.data);
-      handleSavePagination(data.pagination);
-    }
-  }, [data, isPending]);
-
-  const handleOpenModalAction = (application: CVApplication, modal: string) => {
-    setSelectedApplication(application);
-    handleOpenModal(modal);
-  };
-
-  const handleCloseModalAction = useCallback((modal: string) => {
-    setSelectedApplication(null);
-    handleCloseModal(modal);
-  }, []);
-
+  const { data, isPending, isError, refetch } = useGetAllCVQuery();
+  const CVApplications = useMemo(() => {
+    const rows = (data ?? []).filter((item) => {
+      const status = item.deletedAt ? "deleted" : new Date(item.jobEndDate).getTime() < Date.now() ? "expired" : item.status;
+      return !statusValue.length || statusValue.includes(status);
+    });
+    return rows.sort((a, b) => {
+      for (const sort of sortValue) {
+        const [field, direction] = sort.split(":");
+        const key = (field === "title" ? "jobTitle" : field) as "jobTitle" | "fullName" | "phoneNumber" | "createdAt" | "updatedAt";
+        const result = String(a[key] ?? "").localeCompare(String(b[key] ?? ""), undefined, { numeric: true });
+        if (result) return direction === "DESC" ? -result : result;
+      }
+      return 0;
+    });
+  }, [data, sortValue, statusValue]);
   const handleGetValueSort = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target as HTMLInputElement;
     const combinedValue = name + value;
@@ -340,11 +312,15 @@ const ManageCV = () => {
               </tr>
             </thead>
             <tbody>
-              {CVApplications.length > 0 ? (
+              {isError ? (
+                <tr><td colSpan={7} style={{ textAlign: "center" }}>
+                  {t("Unable to load CVs")} <button type="button" onClick={() => refetch()}>{t("Retry")}</button>
+                </td></tr>
+              ) : CVApplications.length > 0 ? (
                 CVApplications.map((application, index) => (
                   <tr key={application.id}>
                     <td>
-                      {(pagination.page - 1) * pagination.limit + index + 1}
+                      {index + 1}
                     </td>
                     <td>
                       <p>{application.jobTitle}</p>
@@ -422,28 +398,13 @@ const ManageCV = () => {
                     </td>
                     <td>
                       <div className="icons">
-                        <Eye
-                          color="#0ab305"
-                          onClick={() =>
-                            handleOpenModalAction(application, "view")
-                          }
-                        />
+                        <Eye color="#0ab305" aria-disabled="true" />
                         {application.status !== "accepted" &&
                           application.status !== "reject" && (
-                            <Edit
-                              color="#ed1b2f"
-                              onClick={() =>
-                                handleOpenModalAction(application, "edit")
-                              }
-                            />
+                            <Edit color="#ed1b2f" aria-disabled="true" />
                           )}
                         {!application.deletedAt && (
-                          <Trash2
-                            color="#414042"
-                            onClick={() =>
-                              handleOpenModalAction(application, "delete")
-                            }
-                          />
+                          <Trash2 color="#414042" aria-disabled="true" />
                         )}
                       </div>
                     </td>
@@ -459,24 +420,6 @@ const ManageCV = () => {
             </tbody>
           </table>
         </ManageCVTable>
-      )}
-      <ModalView
-        selectedApplication={selectedApplication}
-        onClose={() => handleCloseModalAction("view")}
-      />
-      <ModalEdit
-        selectedApplication={selectedApplication}
-        onClose={() => handleCloseModalAction("edit")}
-      />
-      <ModalDelete
-        selectedApplication={selectedApplication}
-        onClose={() => handleCloseModalAction("delete")}
-      />
-      {CVApplications.length > 0 && (
-        <Pagination
-          pagination={pagination}
-          onChangePagination={handleSavePagination}
-        />
       )}
     </ManageCVWrapper>
   );

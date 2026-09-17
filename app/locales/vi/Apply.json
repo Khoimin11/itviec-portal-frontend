@@ -44,5 +44,7 @@
   "Accept this applicant?": "Chấp nhận ứng viên?",
   "Confirm deletion of applied CV": "Xác nhận xóa CV đã ứng tuyển",
   "Are you sure you want to delete your CV for this job?": "Bạn có chắc muốn xoá CV đã ứng tuyển cho công việc này không?",
-  "Apply": "Ứng tuyển"
+  "Apply": "Ứng tuyển",
+  "Unable to load CVs": "Không tải được danh sách CV.",
+  "Retry": "Thử lại"
 }

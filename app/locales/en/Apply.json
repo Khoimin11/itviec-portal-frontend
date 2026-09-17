@@ -46,12 +46,6 @@
   "Are you sure you want to delete your CV for this job?": "Are you sure you want to delete your CV for this job?",
   "Apply": "Apply",
   "": "",
-  "": "",
-  "": "",
-  "": "",
-  "": "",
-  "": "",
-  "": "",
-  "": "",
-  "": ""
+  "Unable to load CVs": "Unable to load CVs.",
+  "Retry": "Retry"
 }
