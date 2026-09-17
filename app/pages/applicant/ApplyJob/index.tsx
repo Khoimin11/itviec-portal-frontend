@@ -18,28 +18,22 @@ import {
   SkeletonWrapper,
 } from "./styled";
 import InputFloating from "~/components/InputFloating";
-import { useForm, type SubmitHandler } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import InputSelectFloating from "~/components/InputSelectFloating";
-import locationService from "~/services/locationService";
+import cities from "~/constants/cities";
+import authService from "~/services/authService";
+import { ApiError } from "~/api/client";
 import SwitchLanguage from "~/components/SwitchLanguage";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useUserStore } from "~/stores/userStore";
-import showToast from "~/utils/showToast";
 import "react-toastify/dist/ReactToastify.css";
 import Skeleton from "react-loading-skeleton";
 import { useJobQuery } from "~/hooks/useJobQuery";
-import useDebounce from "~/hooks/useDebounce";
 import { useLocationStore } from "~/stores/locationStore";
-import type { CreateApplicationPayload } from "~/services/applicationService";
-import applicationService from "~/services/applicationService";
 import { schema } from "./schema";
-import { ChevronLeft, Eye, Upload, X } from "feather-icons-react";
-import formatDate from "~/utils/formatDate";
-import { useJobStore } from "~/stores/jobStore";
-import Loading from "~/components/Loading";
+import { ChevronLeft, Upload, X } from "feather-icons-react";
 import { useTranslation } from "react-i18next";
-import { useApplicantQuery } from "~/hooks/useApplicantQuery";
 import useValidation from "~/hooks/useValidation";
 
 export type CVSelectionStatus = "SELECTED" | "NOT_SELECTED" | "UNSET";
@@ -48,20 +42,16 @@ const ApplyJob = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [filename, setFilename] = useState<string>("");
   const [selectedCV, setSelectedCV] = useState<CVSelectionStatus>("UNSET");
-  const [provinceOptions, setProvinceOptions] = useState<Option[]>([]);
   const { t, i18n } = useTranslation(["apply"]);
   const language = i18n.language;
   const navigate = useNavigate();
   const { slug } = useParams();
-  const [loading, setLoading] = useState(true);
   const {
     locationsTmp,
     handleAddLocation,
     handleRemoveLocation,
     handleAddLocations,
   } = useLocationStore();
-  const { handleAppliedSuccess } = useJobStore();
-  const queryClient = useQueryClient();
 
   const {
     id: userId,
@@ -78,50 +68,30 @@ const ApplyJob = () => {
     setIsOpen(false);
   }
 
-  const { data: job, isPending: jobPending } = useJobQuery(slug + "");
+  const { data: job, isPending: jobPending, isError: jobError, error: jobFailure, refetch: refetchJob } = useJobQuery(slug || "");
+  const { data: account, isPending: accountPending, isError: accountError, error: accountFailure, refetch: refetchAccount } = useQuery({
+    queryKey: ["application-account", userId],
+    queryFn: () => authService.account(),
+    select: ({ data }) => data,
+    retry: false,
+  });
 
   useEffect(() => {
-    setLoading(true);
-    if (!jobPending && !job) {
-      setTimeout(() => {
-        navigate(-1);
-      }, 1500);
-    } else {
-      setLoading(false);
+    if (accountFailure instanceof ApiError && accountFailure.status === 401) {
+      navigate("/login?apply=" + encodeURIComponent(slug || ""), { replace: true });
     }
-  }, [jobPending, job]);
-
-  const { data: applicant, isPending: applicantPending } =
-    useApplicantQuery(userId);
+  }, [accountFailure, slug, navigate]);
 
   useEffect(() => {
-    setLoading(true);
-    if (!applicantPending && !applicant) {
-      showToast("error", "Chỉ ứng viên mới có thể ứng tuyển");
-      setTimeout(() => {
-        navigate(-1);
-      }, 1500);
-    } else {
-      setLoading(false);
-      setSelectedCV(applicant?.cv ? "SELECTED" : "UNSET");
-      setValue("cv", applicant?.cv + "");
-      setValue("coverLetter", applicant?.coverLetter + "");
-      const locations =
-        applicant?.locations.map(({ location }) => ({
-          value: location,
-          label: location,
-        })) || [];
-
-      handleAddLocations(locations);
-    }
-  }, [applicant, applicantPending]);
+    handleAddLocations([]);
+    return () => handleAddLocations([]);
+  }, [slug, handleAddLocations]);
 
   const schemaResolver = schema(t, selectedCV, locationsTmp.length === 0);
 
   const {
     register,
     formState: { errors },
-    handleSubmit,
     watch,
     setValue,
   } = useForm<Application>({
@@ -129,7 +99,7 @@ const ApplyJob = () => {
       fullName: username || "",
       email: email || "",
       phoneNumber: phoneNumber || "",
-      coverLetter: applicant?.coverLetter || "",
+      coverLetter: "",
       cv: "",
       location: "",
     },
@@ -137,89 +107,41 @@ const ApplyJob = () => {
     mode: "onTouched",
   });
 
-  const applyJobMutation = useMutation({
-    mutationFn: ({ slug, body }: CreateApplicationPayload) =>
-      applicationService.create({ slug, body }),
-
-    onSuccess: (response) => {
-      const message = response.message as string;
-      const data = response.data as Application;
-      if (!data && message) {
-        showToast("error", message);
-        return;
-      }
-      handleAppliedSuccess(data);
-      navigate(`/apply/success/${slug + ""}`, { replace: true });
-      queryClient.invalidateQueries({ queryKey: ["job", slug + ""] });
-      queryClient.invalidateQueries({ queryKey: ["jobs"] });
-    },
-  });
-
-  const onSubmit: SubmitHandler<Application> = async (data: Application) => {
-    data.locations = locationsTmp.map((l) => l.label);
-    delete data.location;
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (key === "cv") {
-        formData.append("cv", value || "");
-      } else if (Array.isArray(value)) {
-        for (let i = 0; i < value.length; i++) {
-          formData.append(key, value[i]);
-        }
-      } else if (value) {
-        formData.append(key, value as string);
-      }
-    });
-    if (selectedCV === "SELECTED") formData.delete("cv");
-    if (!job) return;
-    applyJobMutation.mutate({ slug: job?.slug, body: formData });
-    // for (let pair of formData.entries()) {
-    //   console.log(`${pair[0]}: ${pair[1]}`);
-    // }
-  };
+  useEffect(() => {
+    if (account) {
+      setValue("fullName", account.username || "");
+      setValue("email", account.email || "");
+      setValue("phoneNumber", account.phoneNumber || "");
+    }
+  }, [account, setValue]);
 
   const isValidFullName = useValidation(watch("fullName"), username);
   const isValidPhoneNumber = useValidation(watch("phoneNumber"), phoneNumber);
   const isValidCoverLetter = useValidation(
     watch("coverLetter"),
-    applicant?.coverLetter
+    ""
   );
 
-  const locationDebounce = useDebounce(watch("location") + "", 1000);
-
-  const { data: provinces, isPending } = useQuery({
-    queryKey: ["provinces", locationDebounce],
-    queryFn: () => locationService.getProvinces({ name: locationDebounce }),
-    select: ({ data }) => data,
-  });
-
-  useEffect(() => {
-    if (!isPending && provinces) {
-      const options = provinces?.data
-        .map((data: any) => ({
-          value: data.name,
-          label: data.name,
-        }))
-        .filter((option: Option) =>
-          locationsTmp.map((location) => location.value !== option.value)
-        );
-      setProvinceOptions(options);
-    }
-  }, [isPending, provinces]);
+  const provinceOptions = cities.map((city) => ({ value: city.value, label: t(city.label, { ns: "option" }) }))
+    .filter((city) => !locationsTmp.some((item) => item.value === city.value))
+    .filter((city) => city.label.toLocaleLowerCase().includes((watch("location") || "").toLocaleLowerCase()));
 
   const handleGetFileCV = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
+      setSelectedCV("NOT_SELECTED");
       setFilename(file.name);
       setValue("cv", file);
     }
   };
 
+  if (jobError || accountError) return <ApplyJobWrapper><ApplyJobContainer><p>{jobFailure instanceof ApiError && jobFailure.status === 404 ? "Không tìm thấy việc làm." : "Không tải được thông tin ứng tuyển."}</p><button type="button" onClick={() => { void refetchJob(); void refetchAccount(); }}>Thử lại</button></ApplyJobContainer></ApplyJobWrapper>;
+  if (account && account.role !== "APPLICANT") return <ApplyJobWrapper><ApplyJobContainer><p>Chỉ ứng viên mới có thể ứng tuyển.</p><Link to={"/job/" + slug}>Quay lại việc làm</Link></ApplyJobContainer></ApplyJobWrapper>;
+
   return (
     <ApplyJobWrapper>
-      {applyJobMutation.isPending && <Loading />}
-      {applicantPending || loading || jobPending || !job ? (
+      {accountPending || jobPending || !job ? (
         <SkeletonWrapper>
           <Skeleton style={{ height: "100vh" }} borderRadius={8} />
         </SkeletonWrapper>
@@ -235,39 +157,10 @@ const ApplyJob = () => {
           </ApplyJobBranding>
           <ApplyJobBox>
             <h2>{job.title}</h2>
-            <ApplyJobForm onSubmit={handleSubmit(onSubmit)}>
+            <ApplyJobForm onSubmit={(event) => event.preventDefault()}>
               <h3>
                 {t("Your CV")} <abbr>*</abbr>
               </h3>
-              {applicant?.cv && (
-                <ApplyJobFile
-                  htmlFor="current-file"
-                  className={selectedCV === "SELECTED" ? "active" : ""}
-                  onClick={() => setSelectedCV("SELECTED")}>
-                  <input
-                    type="radio"
-                    id="current-file"
-                    checked={selectedCV === "SELECTED"}
-                    name="selected-cv"
-                    onChange={() => {}}
-                  />
-                  <span></span>
-                  <div className="upload-cv">
-                    <span>{t("Use your current CV")}</span>
-                    <p className="current-project">
-                      {applicant?.cv.split("/")[2]}{" "}
-                      <Link to={applicant?.cvUrl} target="_blank">
-                        <Eye />
-                      </Link>
-                    </p>
-                    {job.uploadAt && (
-                      <div className="time-upload">
-                        {t("Upload date:")} {formatDate(job.uploadAt)}
-                      </div>
-                    )}
-                  </div>
-                </ApplyJobFile>
-              )}
               <ApplyJobFile
                 htmlFor="my-cv"
                 className={
@@ -290,7 +183,7 @@ const ApplyJob = () => {
                       <input
                         type="file"
                         id="cv"
-                        {...register("cv")}
+                        name="cv"
                         hidden
                         onChange={handleGetFileCV}
                         accept=".doc, .docx, .pdf"
@@ -352,7 +245,7 @@ const ApplyJob = () => {
                   onRemoveOption={handleRemoveLocation}
                   error={errors.location?.message}
                   onReset={() => setValue("location", "")}
-                  isPending={isPending}
+                  isPending={false}
                 />
               </ApplyJobGroup>
               <ApplyJobLetter>
@@ -387,7 +280,7 @@ const ApplyJob = () => {
                   )}
                 </p>
               </ApplyJobLetter>
-              <ApplyJobSubmit>{t("Send my CV")}</ApplyJobSubmit>
+              <ApplyJobSubmit type="button" disabled>{t("Send my CV")}</ApplyJobSubmit>
             </ApplyJobForm>
           </ApplyJobBox>
         </ApplyJobContainer>
