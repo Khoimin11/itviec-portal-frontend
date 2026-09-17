@@ -31,7 +31,7 @@ import "react-toastify/dist/ReactToastify.css";
 import Skeleton from "react-loading-skeleton";
 import { useJobQuery } from "~/hooks/useJobQuery";
 import { useLocationStore } from "~/stores/locationStore";
-import { schema } from "./schema";
+import { schema, cvSchema } from "./schema";
 import { ChevronLeft, Upload, X } from "feather-icons-react";
 import { useTranslation } from "react-i18next";
 import useValidation from "~/hooks/useValidation";
@@ -94,6 +94,8 @@ const ApplyJob = () => {
     formState: { errors },
     watch,
     setValue,
+    setError,
+    clearErrors,
   } = useForm<Application>({
     defaultValues: {
       fullName: username || "",
@@ -130,9 +132,17 @@ const ApplyJob = () => {
     e.stopPropagation();
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
+      const result = cvSchema(t).safeParse(file);
+      if (!result.success) {
+        setError("cv", { type: "manual", message: result.error.issues[0].message });
+        e.target.value = "";
+        return;
+      }
+      clearErrors("cv");
       setSelectedCV("NOT_SELECTED");
       setFilename(file.name);
-      setValue("cv", file);
+      setValue("cv", file, { shouldDirty: true });
+      e.target.value = "";
     }
   };
 

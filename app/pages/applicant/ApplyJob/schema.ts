@@ -9,6 +9,19 @@ const ACCEPTED_FILE_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
+export const cvSchema = (t: TFunction<["apply"], undefined>) =>
+  z.custom<File>((file) => typeof File !== "undefined" && file instanceof File, {
+    message: t("This field is required."),
+  }).superRefine((file, ctx) => {
+    if (!(typeof File !== "undefined" && file instanceof File)) return;
+    if (!/\.(doc|docx|pdf)$/i.test(file.name) || (file.type && !ACCEPTED_FILE_TYPES.includes(file.type))) {
+      ctx.addIssue({ code: "custom", message: t("Oops! Please attach a .doc .docx .pdf file") });
+    }
+    if (file.size === 0 || file.size > MAX_FILE_SIZE) {
+      ctx.addIssue({ code: "custom", message: file.size === 0 ? "File CV không được rỗng." : t("Use a maximum file size of 3MB.") });
+    }
+  });
+
 export const schema = (
   t: TFunction<["apply"], undefined>,
   selectedCV: CVSelectionStatus,
@@ -24,19 +37,7 @@ export const schema = (
         message: t("Please enter a valid phone number", { ns: "auth" }),
       }),
     coverLetter: z.string().optional(),
-    cv:
-      selectedCV === "SELECTED"
-        ? z.any().optional()
-        : z
-            .custom<File>((file) => file instanceof File, {
-              message: t("This field is required."),
-            })
-            .refine((file) => ACCEPTED_FILE_TYPES.includes(file.type), {
-              message: t("Oops! Please attach a .doc .docx .pdf file"),
-            })
-            .refine((file) => file.size <= MAX_FILE_SIZE, {
-              message: t("Use a maximum file size of 3MB."),
-            }),
+    cv: selectedCV === "SELECTED" ? z.any().optional() : cvSchema(t),
     location: !selectedLocation
       ? z.string().optional()
       : z.string().nonempty({ message: t("This field is required.") }),
