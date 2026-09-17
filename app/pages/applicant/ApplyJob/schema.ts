@@ -28,7 +28,7 @@ export const schema = (
   selectedLocation: boolean
 ) => {
   return z.object({
-    fullName: z.string().nonempty({ message: t("This field is required.") }),
+    fullName: z.string().trim().max(255).nonempty({ message: t("This field is required.") }),
     email: z.string().optional(),
     phoneNumber: z
       .string()
@@ -36,7 +36,7 @@ export const schema = (
       .regex(/^(0[1-9][0-9]{8,9})$/, {
         message: t("Please enter a valid phone number", { ns: "auth" }),
       }),
-    coverLetter: z.string().optional(),
+    coverLetter: z.string().max(500).optional(),
     cv: selectedCV === "SELECTED" ? z.any().optional() : cvSchema(t),
     location: !selectedLocation
       ? z.string().optional()

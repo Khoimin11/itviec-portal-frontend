@@ -1,3 +1,6 @@
+import applicationService from "~/services/applicationService";
+import { reportApiError } from "~/api/reportApiError";
+import Loading from "~/components/Loading";
 import LOGO from "/assets/images/logo.png";
 import { Link, useNavigate, useParams } from "react-router";
 import { useEffect, useState } from "react";
@@ -25,7 +28,7 @@ import cities from "~/constants/cities";
 import authService from "~/services/authService";
 import { ApiError } from "~/api/client";
 import SwitchLanguage from "~/components/SwitchLanguage";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useUserStore } from "~/stores/userStore";
 import "react-toastify/dist/ReactToastify.css";
 import Skeleton from "react-loading-skeleton";
@@ -61,7 +64,7 @@ const ApplyJob = () => {
   } = useUserStore((s) => s.user);
 
   function openModal() {
-    setIsOpen(true);
+    if (!applyMutation.isPending) setIsOpen(true);
   }
 
   function closeModal() {
@@ -91,6 +94,7 @@ const ApplyJob = () => {
 
   const {
     register,
+    handleSubmit,
     formState: { errors },
     watch,
     setValue,
@@ -117,6 +121,49 @@ const ApplyJob = () => {
     }
   }, [account, setValue]);
 
+
+  const applyMutation = useMutation({
+    mutationFn: (body: FormData) => applicationService.create({ slug: slug || "", body }),
+    onSuccess: ({ data }) => {
+      navigate("/apply/success/" + slug, {
+        replace: true,
+        state: { applicationId: data.id, jobId: data.jobId },
+      });
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 422) {
+        const fields: (keyof Application)[] = ["fullName", "phoneNumber", "coverLetter", "cv"];
+        for (const field of fields) {
+          const message = error.errors[field]?.[0];
+          if (message) setError(field, { type: "server", message });
+        }
+        const locationError = Object.entries(error.errors).find(([key]) => key === "locations" || key.startsWith("locations."));
+        if (locationError) setError("location", { type: "server", message: locationError[1][0] });
+      }
+      reportApiError(error);
+    },
+  });
+
+  const onSubmit = (data: Application) => {
+    if (applyMutation.isPending) return;
+    if (!locationsTmp.length) {
+      setError("location", { type: "manual", message: "Vui lòng chọn địa điểm làm việc." });
+      return;
+    }
+    const file = cvSchema(t).safeParse(data.cv);
+    if (!file.success) {
+      setError("cv", { type: "manual", message: file.error.issues[0].message });
+      return;
+    }
+    const body = new FormData();
+    body.append("fullName", data.fullName);
+    body.append("phoneNumber", data.phoneNumber);
+    body.append("coverLetter", data.coverLetter || "");
+    body.append("cv", file.data);
+    locationsTmp.forEach(location => body.append("locations[]", String(location.value)));
+    applyMutation.mutate(body);
+  };
+
   const isValidFullName = useValidation(watch("fullName"), username);
   const isValidPhoneNumber = useValidation(watch("phoneNumber"), phoneNumber);
   const isValidCoverLetter = useValidation(
@@ -131,6 +178,7 @@ const ApplyJob = () => {
   const handleGetFileCV = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
     if (e.target.files && e.target.files.length > 0) {
+      if (applyMutation.isPending) return;
       const file = e.target.files[0];
       const result = cvSchema(t).safeParse(file);
       if (!result.success) {
@@ -151,6 +199,7 @@ const ApplyJob = () => {
 
   return (
     <ApplyJobWrapper>
+      {applyMutation.isPending && <Loading />}
       {accountPending || jobPending || !job ? (
         <SkeletonWrapper>
           <Skeleton style={{ height: "100vh" }} borderRadius={8} />
@@ -167,7 +216,7 @@ const ApplyJob = () => {
           </ApplyJobBranding>
           <ApplyJobBox>
             <h2>{job.title}</h2>
-            <ApplyJobForm onSubmit={(event) => event.preventDefault()}>
+            <ApplyJobForm onSubmit={handleSubmit(onSubmit)}>
               <h3>
                 {t("Your CV")} <abbr>*</abbr>
               </h3>
@@ -194,6 +243,7 @@ const ApplyJob = () => {
                         type="file"
                         id="cv"
                         name="cv"
+                        disabled={applyMutation.isPending}
                         hidden
                         onChange={handleGetFileCV}
                         accept=".doc, .docx, .pdf"
@@ -289,8 +339,9 @@ const ApplyJob = () => {
                     </>
                   )}
                 </p>
+                {errors.coverLetter && <p role="alert">{errors.coverLetter.message}</p>}
               </ApplyJobLetter>
-              <ApplyJobSubmit type="button" disabled>{t("Send my CV")}</ApplyJobSubmit>
+              <ApplyJobSubmit type="submit" disabled={applyMutation.isPending}>{t("Send my CV")}</ApplyJobSubmit>
             </ApplyJobForm>
           </ApplyJobBox>
         </ApplyJobContainer>

@@ -9,8 +9,8 @@ const applicationService = {
   create: ({
     slug,
     body,
-  }: CreateApplicationPayload): Promise<IResponse<Application>> => {
-    return api.post(`/application/${slug}`, body);
+  }: CreateApplicationPayload): Promise<IResponse<{ id: number; jobId: number; createdAt: string }>> => {
+    return api.post("/application/" + slug, body, { timeout: 60000 });
   },
   delete: (id: number): Promise<IResponse<string>> => {
     return api.delete(`/application/${id}`);
