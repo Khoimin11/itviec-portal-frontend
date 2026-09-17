@@ -13,6 +13,14 @@ export interface GetReviewsResonse {
 export type CompanyApplication = Pick<CVApplication,
   "id" | "jobId" | "jobTitle" | "jobEndDate" | "fullName" | "phoneNumber" | "status" | "createdAt" | "updatedAt" | "deletedAt"
 >;
+export interface CompanyApplicationDetail extends CompanyApplication {
+  email: string;
+  locations: string[];
+  coverLetter: string;
+  cvName: string;
+  cvUrl: string;
+}
+
 export interface GetAllReviewResonse {
   data: Review[];
   pagination: Pagination;
@@ -63,6 +71,8 @@ const companyService = {
   getAllJob: (): Promise<IResponse<CompanyJob[]>> => {
     return api.get("/company/all-job");
   },
+  getApplication: (id: number): Promise<IResponse<CompanyApplicationDetail>> =>
+    api.get("/company/applications/" + id),
   getAllCV: (): Promise<IResponse<CompanyApplication[]>> => {
     return api.get("/company/all-cv");
   },

@@ -1,3 +1,4 @@
+import type { CompanyApplicationDetail } from "~/services/companyService";
 import { useModalStore } from "~/stores/modalStore";
 import Modal from "react-modal";
 import { customStyles, CVContent, ModalContainer } from "./styled";
@@ -7,12 +8,12 @@ import { Link } from "react-router";
 import { formatTime } from "~/utils/formatTime";
 
 interface IProps {
-  selectedApplication: CVApplication | null;
+  selectedApplication: CompanyApplicationDetail | null;
   onClose: () => void;
 }
 
 const ModalView = ({ selectedApplication, onClose }: IProps) => {
-  const { modal, handleCloseModal } = useModalStore();
+  const { modal } = useModalStore();
   const { t } = useTranslation(["apply"]);
 
   return (
@@ -40,8 +41,9 @@ const ModalView = ({ selectedApplication, onClose }: IProps) => {
                 <Link
                   to={selectedApplication?.cvUrl + ""}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="filename">
-                  {(selectedApplication?.cv + "").split("/")[2]}
+                  {selectedApplication?.cvName}
                 </Link>
                 <p>
                   {t("Applied on", { ns: "search" })}:{" "}

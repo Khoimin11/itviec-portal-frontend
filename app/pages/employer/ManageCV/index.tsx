@@ -1,3 +1,9 @@
+import { useMutation } from "@tanstack/react-query";
+import companyService, { type CompanyApplicationDetail } from "~/services/companyService";
+import { reportApiError } from "~/api/reportApiError";
+import { useModalStore } from "~/stores/modalStore";
+import Loading from "~/components/Loading";
+import ModalView from "./ModalView";
 import { ManageCVTable, ManageCVWrapper } from "./styled";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, Edit, Eye, Play, Trash2 } from "feather-icons-react";
@@ -10,6 +16,20 @@ import FilterBox from "~/components/FilterBox";
 
 const ManageCV = () => {
   const { t } = useTranslation(["apply"]);
+  const [selectedApplication, setSelectedApplication] = useState<CompanyApplicationDetail | null>(null);
+  const { handleOpenModal, handleCloseModal } = useModalStore();
+  const viewApplication = useMutation({
+    mutationFn: companyService.getApplication,
+    onSuccess: ({ data }) => {
+      setSelectedApplication(data);
+      handleOpenModal("view");
+    },
+    onError: reportApiError,
+  });
+  const closeView = () => {
+    handleCloseModal("view");
+    setSelectedApplication(null);
+  };
   const [sortValue, setSortValue] = useState<string[]>([]);
   const [statusValue, setStatusValue] = useState<string[]>([]);
   const [selectedValue, setSelectedValue] = useState<string | null>(null);
@@ -58,6 +78,7 @@ const ManageCV = () => {
 
   return (
     <ManageCVWrapper>
+      {viewApplication.isPending && <Loading />}
       {isPending ? (
         <Skeleton style={{ minHeight: "8.76rem", marginBottom: "2rem" }} />
       ) : (
@@ -398,7 +419,20 @@ const ManageCV = () => {
                     </td>
                     <td>
                       <div className="icons">
-                        <Eye color="#0ab305" aria-disabled="true" />
+                        <Eye
+                          color="#0ab305"
+                          role="button"
+                          tabIndex={0}
+                          aria-label={t("Application CV Information")}
+                          aria-disabled={viewApplication.isPending}
+                          onClick={() => { if (!viewApplication.isPending) viewApplication.mutate(application.id); }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              if (!viewApplication.isPending) viewApplication.mutate(application.id);
+                            }
+                          }}
+                        />
                         {application.status !== "accepted" &&
                           application.status !== "reject" && (
                             <Edit color="#ed1b2f" aria-disabled="true" />
@@ -421,6 +455,7 @@ const ManageCV = () => {
           </table>
         </ManageCVTable>
       )}
+      <ModalView selectedApplication={selectedApplication} onClose={closeView} />
     </ManageCVWrapper>
   );
 };
