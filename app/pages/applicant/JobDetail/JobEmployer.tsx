@@ -5,12 +5,12 @@ import {
   JobDetailEmployerInfo,
   JobDetailLeft,
 } from "./styled";
-import { useJobStore } from "~/stores/jobStore";
+
 import { ExternalLink } from "feather-icons-react";
 
-const JobEmployer = () => {
+const JobEmployer = ({ jobDetail }: { jobDetail: Job }) => {
   const { t, i18n } = useTranslation(["search", "option"]);
-  const { jobDetail } = useJobStore();
+
   return (
     <JobDetailLeft className="col-4">
       <JobDetailEmployer>
@@ -19,7 +19,7 @@ const JobEmployer = () => {
           className="company-logo">
           <img
             src={
-              jobDetail?.company?.logo + "" === "null"
+              !jobDetail?.company?.logo
                 ? "/assets/svg/avatar-default.svg"
                 : jobDetail?.company?.logo + ""
             }
@@ -28,7 +28,7 @@ const JobEmployer = () => {
         </Link>
         <div className="company-info">
           <h3>{jobDetail?.company?.companyName}</h3>
-          <Link to={jobDetail?.company?.website}>
+          <Link to={"/company/" + jobDetail.company.slug}>
             <span>{t("View company")}</span>
             <ExternalLink />
           </Link>

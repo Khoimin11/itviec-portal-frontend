@@ -1,3 +1,4 @@
+import { ApiError } from "~/api/client";
 import { JobDetailContainer, JobDetailWrapper } from "./styled";
 import { useEffect } from "react";
 import JobEmployer from "./JobEmployer";
@@ -17,7 +18,7 @@ const JobDetail = () => {
 
   const { slug } = useParams();
   const { handleSaveJobDetail } = useJobStore();
-  const { data, isPending, isSuccess } = useJobQuery(slug + "");
+  const { data, isPending, isSuccess, isError, error, refetch } = useJobQuery(slug + "");
 
   useEffect(() => {
     if (isSuccess) {
@@ -26,18 +27,19 @@ const JobDetail = () => {
   }, [data, isSuccess]);
 
   if (isPending) return <Loading />;
+  if (isError || !data) return <JobDetailWrapper><JobDetailContainer><div role="alert"><p>{error instanceof ApiError && error.status === 404 ? "Không tìm thấy việc làm." : "Không tải được thông tin việc làm."}</p><button type="button" onClick={() => refetch()}>Thử lại</button></div></JobDetailContainer></JobDetailWrapper>;
 
   return (
     <JobDetailWrapper>
       <JobDetailContainer>
-        <JobInfo />
-        <JobEmployer />
+        <JobInfo jobDetail={data} />
+        <JobEmployer jobDetail={data} />
       </JobDetailContainer>
       <Breadcrumb
         primaryLinkLabel={t("All IT jobs")}
         primaryLinkUrl="/it-jobs"
-        secondaryLinkLabel="Technical Lead (Java, Spring)"
-        secondaryLinkUrl="/"
+        secondaryLinkLabel={data.title}
+        secondaryLinkUrl={"/job/" + data.slug}
       />
     </JobDetailWrapper>
   );

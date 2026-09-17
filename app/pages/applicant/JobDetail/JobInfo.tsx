@@ -20,14 +20,14 @@ import IconCircleDollarSign from "~/components/Icons/IconCircleDollarSign";
 import formatDate from "~/utils/formatDate";
 import jobService from "~/services/jobService";
 
-const JobInfo = () => {
+const JobInfo = ({ jobDetail }: { jobDetail: Job }) => {
   const { t, i18n } = useTranslation(["search", "option", "apply"]);
   const language = i18n.language;
   const isAuthenticated = useUserStore((s) => s.isAuthenticated);
-  const { jobDetail, handleWishlist } = useJobStore();
+  const { handleWishlist } = useJobStore();
   const navigate = useNavigate();
 
-  const postedTime = getPostedTime(t, new Date(jobDetail?.createdAt + "") + "");
+  const postedTime = getPostedTime(t, jobDetail.createdAt + "");
 
   const handleApply = () => {
     if (!isAuthenticated) {
@@ -91,7 +91,7 @@ const JobInfo = () => {
       <JobDetailBody>
         <div className="job-info">
           <MapPin />
-          <span>{t(jobDetail?.location, { ns: "option" })}</span>
+          <span>{[jobDetail.address, t(jobDetail.location, { ns: "option" })].filter(Boolean).join(", ")}</span>
         </div>
         <div className="job-info">
           <IconWorkingModel />

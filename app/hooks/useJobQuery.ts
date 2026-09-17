@@ -2,12 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import jobService from "~/services/jobService";
 
 export const useJobQuery = (slug: string) => {
-  const { data, isPending, isSuccess } = useQuery({
+  const { data, isPending, isSuccess, isError, error, refetch } = useQuery({
     queryKey: ["job", slug],
     queryFn: () => jobService.getDetail(slug + ""),
     select: ({ data }) => data as Job,
     enabled: !!slug,
   });
 
-  return { data, isPending, isSuccess };
+  return { data, isPending, isSuccess, isError, error, refetch };
 };
